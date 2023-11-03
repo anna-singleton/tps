@@ -1,0 +1,13 @@
+[package]
+name = "tps"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+git2 = "0.18.1"
+tmux_interface = "0.3.1"
+directories = "5.0.1"
+serde = { version="1.0.190", features = ["derive"] }
+toml = "0.8.6"
