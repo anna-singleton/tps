@@ -4,6 +4,7 @@ use toml;
 use serde::Deserialize;
 use git2::Repository;
 use std::collections::HashSet;
+use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, SwitchClient};
 
 #[derive(Deserialize, Debug)]
 struct Config {
@@ -13,6 +14,23 @@ struct Config {
 fn main() {
     let projects = generate_project_dirs();
     println!("{:#?}", projects);
+
+    let sessions = get_tmux_session_names();
+    println!("{:?}", sessions);
+
+    // if let Err(e) = Tmux::with_command(SwitchClient::new().target_session("test1").build()).output() {
+    //     eprintln!("could not switch client with error {}", e);
+    // }
+}
+
+fn get_tmux_session_names() -> Vec<String> {
+    let cmd_output = Tmux::with_command(ListSessions::new().build()).output().expect("could not run tmux command").0.stdout;
+    let s = std::str::from_utf8(&cmd_output).expect("could not convert output from utf8.");
+    let sessions = s.lines()
+        .map(|x| x.split_once(":").expect("bad tmux output detected").0.to_string())
+        .collect();
+
+    return sessions;
 }
 
 fn generate_project_dirs() -> Vec<PathBuf> {
