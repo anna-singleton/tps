@@ -59,6 +59,20 @@ impl SkimItem for Project {
     }
 }
 
+fn attach_from_outside_tmux(target_session: &str) {
+        Tmux::with_command(NewSession::new()
+                           .session_name("base")
+                           .detached()
+                           .build()).output().expect("failed to run tmux command");
+    Tmux::with_command(AttachSession::new().target_session("base").build()).output().expect("failed to attach non-attached client to session");
+    std::process::Command::new("tmux")
+        .arg("switch-client")
+        .arg("-t")
+        .arg(target_session)
+        .output()
+        .expect("could not execute command");
+}
+
 fn main() {
     let project_paths = generate_project_dirs();
     println!("{:#?}", project_paths);
@@ -105,15 +119,25 @@ fn main() {
 
     println!("Attempting to switch to project: {}", selected_proj.path_name);
 
+    // N.B. attaching with tmux_interface seems to create errors with the terminal getting confused
+    // lets do it with a command instead.
+
+
     if let Err(e) = std::env::var("TMUX") {
         match e {
-            std::env::VarError::NotPresent => Tmux::with_command(AttachSession::new().target_session(&selected_proj.path_name).build()).output().expect("failed to attach non-attached client to session"), // we are not in tmux right now
+            std::env::VarError::NotPresent => attach_from_outside_tmux(&selected_proj.path_name), // we are not in tmux right now
             std::env::VarError::NotUnicode(_) => panic!("$TMUX is not unicode! this cannot be handled. exiting."),
         };
     } else {
-        if let Err(e) = Tmux::with_command(SwitchClient::new().target_session(&selected_proj.path_name).build()).output() {
-            eprintln!("could not switch client with error {}", e);
-        }
+            std::process::Command::new("tmux")
+                .arg("switch-client")
+                .arg("-t")
+                .arg(&selected_proj.path_name)
+                .output()
+                .expect("could not execute command");
+        // if let Err(e) = Tmux::with_command(SwitchClient::new().target_session(&selected_proj.path_name).build()).output() {
+        //     eprintln!("could not switch client with error {}", e);
+        // }
     }
 
 }
