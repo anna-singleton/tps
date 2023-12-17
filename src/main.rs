@@ -1,10 +1,10 @@
 use directories::BaseDirs;
-use std::{path::PathBuf, str::from_utf8};
+use std::path::PathBuf;
 use toml;
 use serde::Deserialize;
 use git2::Repository;
 use std::collections::HashSet;
-use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, SwitchClient, NewSession, AttachSession, ClientFlags};
+use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, NewSession};
 use skim::prelude::*;
 use regex::{Regex, RegexBuilder};
 
@@ -70,8 +70,9 @@ impl SkimItem for Project {
     }
 }
 
-fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
-    eprintln!("attaching from outside tmux is currently WIP, please open a tmux session and then call tps.");
+fn attach_from_outside_tmux(_path_name: &str, _session_name: &str, _exists: bool) {
+    eprintln!("attaching from outside tmux is currently broken :(, please open
+        a tmux session and then call tps.");
     // if exists {
     //     let output = std::process::Command::new("tmux")
     //         .arg("attach")
