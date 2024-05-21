@@ -4,7 +4,7 @@ use toml;
 use serde::Deserialize;
 use git2::Repository;
 use std::collections::HashSet;
-use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, SwitchClient, NewSession, AttachSession};
+use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, SwitchClient, NewSession, AttachSession, ClientFlags};
 use skim::prelude::*;
 use regex::{Regex, RegexBuilder};
 
@@ -70,48 +70,30 @@ impl SkimItem for Project {
     }
 }
 
-fn attach_from_outside_tmux(target_session: &str) {
-    Tmux::with_command(NewSession::new()
-                       .session_name("base")
-                       .detached()
-                       .build()).output().expect("failed to run tmux command");
-    Tmux::with_command(AttachSession::new().target_session("base").build()).output().expect("failed to attach non-attached client to session");
-    let output = std::process::Command::new("tmux")
-        .arg("list-clients")
-        .arg("-F")
-        .arg("'#{client_session} #{client_tty} #{client_activity}'")
-        .output()
-        .expect("could not execute tmux command")
-        .stdout;
-
-    let s_output = std::str::from_utf8(&output).expect("did not receive utf8 output from tmux");
-
-    let re = Regex::new(r"^(\S+?) (\S+?) (\S+?)$").expect("failed building regex");
-    let mut latest:u32 = 0;
-    let mut client = String::new();
-    for line in s_output.lines() {
-        let x = re.captures(line).unwrap();
-        if &x[0] != "base" { continue }
-        let timestamp = x[2].parse::<u32>().unwrap();
-        if  timestamp > latest {
-            client = x[1].to_string();
-            latest = timestamp;
-        }
-    }
-    std::process::Command::new("tmux")
-        .arg("-c")
-        .arg(client)
-        .arg("switch-client")
-        .arg("-t")
-        .arg(target_session)
-        .output()
-        .expect("could not execute command");
+fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
+    eprintln!("attaching from outside tmux is currently WIP, please open a tmux session and then call tps.");
+    // if exists {
+    //     let output = std::process::Command::new("tmux")
+    //         .arg("attach")
+    //         .arg("-t")
+    //         .arg(session_name)
+    //         .spawn();
+    //     println!("{:?}", output);
+    // } else {
+    //     std::process::Command::new("tmux")
+    //         .arg("new-session")
+    //         .arg("-c")
+    //         .arg(path_name)
+    //         .arg("-s")
+    //         .arg(session_name)
+    //         .output()
+    //         .expect("could not execute tmux command");
+    // }
 }
 
 fn main() {
     let project_paths = generate_project_dirs();
     let sessions = get_tmux_session_info();
-    // println!("{:?}", sessions);
 
     let projects:Vec<_> = project_paths.into_iter().map(|path| Project::new(path, &sessions)).collect();
 
@@ -174,41 +156,6 @@ fn main() {
             .arg(&selected_proj.session_name)
             .output()
             .expect("could not execute command");
-    }
-    if selected_proj.session.is_none() {
-        // println!("Session does not exist yet! making one.");
-        let new_session = match Tmux::with_command(NewSession::new()
-                           .start_directory(&selected_proj.path_name)
-                           .session_name(&selected_proj.path_name)
-                           .detached()
-                           .build()).output() {
-                            Ok(s) => s,
-                            Err(e) => panic!("failed running tmux command with error {}", e),
-                        };
-        dbg!(&new_session);
-    }
-
-    // println!("Attempting to switch to project: {}", selected_proj.path_name);
-
-    // N.B. attaching with tmux_interface seems to create errors with the terminal getting confused
-    // lets do it with a command instead.
-
-
-    if let Err(e) = std::env::var("TMUX") {
-        match e {
-            std::env::VarError::NotPresent => attach_from_outside_tmux(&selected_proj.path_name), // we are not in tmux right now
-            std::env::VarError::NotUnicode(_) => panic!("$TMUX is not unicode! this cannot be handled. exiting."),
-        };
-    } else {
-            std::process::Command::new("tmux")
-                .arg("switch-client")
-                .arg("-t")
-                .arg(&selected_proj.path_name)
-                .output()
-                .expect("could not execute command");
-        // if let Err(e) = Tmux::with_command(SwitchClient::new().target_session(&selected_proj.path_name).build()).output() {
-        //     eprintln!("could not switch client with error {}", e);
-        // }
     }
 
 }
