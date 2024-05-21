@@ -119,9 +119,10 @@ fn main() {
         return;
     }
 
-    // let selected_skim_items = Skim::run_with(&skim_opts, Some(rx))
-    //     .map(|out| out.selected_items)
-    //     .unwrap_or_else(Vec::new);
+
+    if selection.final_event == Event::EvActAbort || selection.selected_items.is_empty() {
+        return;
+    }
 
     let selected_proj = selection.selected_items.iter()
         .map(|selected| (**selected).as_any().downcast_ref::<Project>().unwrap().to_owned())
