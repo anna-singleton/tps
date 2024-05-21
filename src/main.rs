@@ -1,5 +1,5 @@
 use directories::BaseDirs;
-use std::path::PathBuf;
+use std::{path::PathBuf, str::from_utf8};
 use toml;
 use serde::Deserialize;
 use git2::Repository;
@@ -71,12 +71,36 @@ impl SkimItem for Project {
 }
 
 fn attach_from_outside_tmux(target_session: &str) {
-        Tmux::with_command(NewSession::new()
-                           .session_name("base")
-                           .detached()
-                           .build()).output().expect("failed to run tmux command");
+    Tmux::with_command(NewSession::new()
+                       .session_name("base")
+                       .detached()
+                       .build()).output().expect("failed to run tmux command");
     Tmux::with_command(AttachSession::new().target_session("base").build()).output().expect("failed to attach non-attached client to session");
+    let output = std::process::Command::new("tmux")
+        .arg("list-clients")
+        .arg("-F")
+        .arg("'#{client_session} #{client_tty} #{client_activity}'")
+        .output()
+        .expect("could not execute tmux command")
+        .stdout;
+
+    let s_output = std::str::from_utf8(&output).expect("did not receive utf8 output from tmux");
+
+    let re = Regex::new(r"^(\S+?) (\S+?) (\S+?)$").expect("failed building regex");
+    let mut latest:u32 = 0;
+    let mut client = String::new();
+    for line in s_output.lines() {
+        let x = re.captures(line).unwrap();
+        if &x[0] != "base" { continue }
+        let timestamp = x[2].parse::<u32>().unwrap();
+        if  timestamp > latest {
+            client = x[1].to_string();
+            latest = timestamp;
+        }
+    }
     std::process::Command::new("tmux")
+        .arg("-c")
+        .arg(client)
         .arg("switch-client")
         .arg("-t")
         .arg(target_session)
@@ -86,9 +110,8 @@ fn attach_from_outside_tmux(target_session: &str) {
 
 fn main() {
     let project_paths = generate_project_dirs();
-
     let sessions = get_tmux_session_info();
-    println!("{:?}", sessions);
+    // println!("{:?}", sessions);
 
     let projects:Vec<_> = project_paths.into_iter().map(|path| Project::new(path, &sessions)).collect();
 
@@ -151,8 +174,9 @@ fn main() {
             .arg(&selected_proj.session_name)
             .output()
             .expect("could not execute command");
+    }
     if selected_proj.session.is_none() {
-        println!("Session does not exist yet! making one.");
+        // println!("Session does not exist yet! making one.");
         let new_session = match Tmux::with_command(NewSession::new()
                            .start_directory(&selected_proj.path_name)
                            .session_name(&selected_proj.path_name)
@@ -164,7 +188,7 @@ fn main() {
         dbg!(&new_session);
     }
 
-    println!("Attempting to switch to project: {}", selected_proj.path_name);
+    // println!("Attempting to switch to project: {}", selected_proj.path_name);
 
     // N.B. attaching with tmux_interface seems to create errors with the terminal getting confused
     // lets do it with a command instead.
