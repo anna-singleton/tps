@@ -4,7 +4,11 @@ use toml;
 use serde::Deserialize;
 use git2::Repository;
 use std::collections::HashSet;
+<<<<<<< HEAD
 use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, NewSession};
+=======
+use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, SwitchClient, NewSession, AttachSession};
+>>>>>>> 4542f69 (working draft of MVP)
 use skim::prelude::*;
 use regex::{Regex, RegexBuilder};
 
@@ -20,6 +24,7 @@ struct Session {
     window_count: u32,
     date_created: String,
     attached: bool,
+<<<<<<< HEAD
 }
 
 #[derive(Debug)]
@@ -96,6 +101,7 @@ fn main() {
     let project_paths = generate_project_dirs();
 
     let sessions = get_tmux_session_info();
+    println!("{:?}", sessions);
 
     let projects:Vec<_> = project_paths.into_iter().map(|path| Project::new(path, &sessions)).collect();
 
@@ -130,7 +136,6 @@ fn main() {
         .collect::<Vec<_>>()[0];
 
 
-
     println!("Attempting to switch to project: {:?}", selected_proj);
 
     // N.B. attaching with tmux_interface seems to create errors with the terminal getting confused
@@ -159,6 +164,30 @@ fn main() {
             .arg(&selected_proj.session_name)
             .output()
             .expect("could not execute command");
+    if selected_proj.session.is_none() {
+        println!("Session does not exist yet! making one.");
+        let new_session = match Tmux::with_command(NewSession::new()
+                           .start_directory(&selected_proj.path_name)
+                           .session_name(&selected_proj.path_name)
+                           .detached()
+                           .build()).output() {
+                            Ok(s) => s,
+                            Err(e) => panic!("failed running tmux command with error {}", e),
+                        };
+        dbg!(&new_session);
+    }
+
+    println!("Attempting to switch to project: {}", selected_proj.path_name);
+
+    if let Err(e) = std::env::var("TMUX") {
+        match e {
+            std::env::VarError::NotPresent => Tmux::with_command(AttachSession::new().target_session(&selected_proj.path_name).build()).output().expect("failed to attach non-attached client to session"), // we are not in tmux right now
+            std::env::VarError::NotUnicode(_) => panic!("$TMUX is not unicode! this cannot be handled. exiting."),
+        };
+    } else {
+        if let Err(e) = Tmux::with_command(SwitchClient::new().target_session(&selected_proj.path_name).build()).output() {
+            eprintln!("could not switch client with error {}", e);
+        }
     }
 
 }
