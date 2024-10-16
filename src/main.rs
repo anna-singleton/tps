@@ -1,6 +1,8 @@
 mod config;
+mod access_cache;
 
-use config::Config;
+use access_cache::AccessCache;
+use config::{Config, SortMode};
 use std::{env::current_dir, path::PathBuf};
 use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, NewSession};
 use skim::prelude::*;
@@ -83,8 +85,12 @@ fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
     // }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::load();
+    let access_cache = match config.sort_mode {
+        SortMode::Alphabetical => AccessCache::load_blank(None, 10),
+        SortMode::Recent => AccessCache::load_from_file(config.cache_path, 50)?,
+    };
     let sessions = get_tmux_session_info();
 
     let mut projects:Vec<_> = config.projects
@@ -113,22 +119,16 @@ fn main() {
 
     let Some(selection) = Skim::run_with(&skim_opts, Some(rx)) else {
         eprintln!("Internal Skim Error");
-        return;
+        return Ok(());
     };
 
-    if selection.final_event == Event::EvActAbort {
-        return;
-    }
-
-
     if selection.final_event == Event::EvActAbort || selection.selected_items.is_empty() {
-        return;
+        return Ok(());
     }
 
     let selected_proj = selection.selected_items.iter()
         .map(|selected| (**selected).as_any().downcast_ref::<Project>().unwrap().to_owned())
         .collect::<Vec<_>>()[0];
-
 
     println!("Attempting to switch to project: {:?}", selected_proj);
 
@@ -158,8 +158,9 @@ fn main() {
             .arg(&selected_proj.session_name)
             .output()
             .expect("could not execute command");
-    }
+    };
 
+    return Ok(());
 }
 
 fn get_tmux_session_info() -> Vec<Session> {
