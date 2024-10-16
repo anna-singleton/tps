@@ -11,9 +11,9 @@ use regex::{Regex, RegexBuilder};
 #[derive(Debug, Clone)]
 struct Session {
     name: String,
-    window_count: u32,
-    date_created: String,
-    attached: bool,
+    _window_count: u32,
+    _date_created: String,
+    _attached: bool,
 }
 
 #[derive(Debug)]
@@ -64,7 +64,7 @@ impl SkimItem for Project {
     }
 }
 
-fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
+fn attach_from_outside_tmux(_path_name: &str, _session_name: &str, _exists: bool) {
     eprintln!("attaching from outside tmux is currently WIP, please open a tmux session and then call tps.");
     // if exists {
     //     let output = std::process::Command::new("tmux")
@@ -190,9 +190,9 @@ fn get_tmux_session_info() -> Vec<Session> {
 
         sessions.push(Session {
             name,
-            window_count,
-            date_created,
-            attached,
+            _window_count: window_count,
+            _date_created: date_created,
+            _attached: attached,
         });
     }
     return sessions;
