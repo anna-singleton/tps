@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap, error::Error, fs, path::PathBuf};
 use chrono::Utc;
-use itertools::{sorted, Itertools};
+use itertools::Itertools;
 
 use serde::{Deserialize, Serialize};
 
@@ -21,8 +21,11 @@ impl Drop for AccessCache {
         if let Some(path) = &self.path {
             // if we have a path set, dump the hashmap back to the file,
             // otherwise we have nowhere to write it so dont.
-            let b = toml::to_string_pretty(self).expect("[E001]: could not serialize access cache.
+            let b = toml::to_string_pretty(&self.cache).expect("[E001]: could not serialize access cache.
                 please report this error.");
+            if !fs::exists(&path.parent().expect("[E003] Error whilst trying to create parent cache directory")).unwrap_or(false) {
+                fs::create_dir_all(&path.parent().unwrap()).expect("[E002] Could not create cache directory");
+            }
             if let Err(e) = fs::write(path, b) {
                 eprintln!("Could not write access cache. Recent accesses could not be updated.
                     Error: {}", e)
@@ -60,8 +63,8 @@ impl AccessCache {
         return *self.cache.get(&project.path).unwrap_or(&0);
     }
 
-    fn cmp_projects_by_access_cache_time(&self, a: &Project, b: &Project) -> Ordering {
-        return self.get_access_time_for_project(a).cmp(&self.get_access_time_for_project(b));
+    pub fn cmp_projects_by_access_cache_time(&self, a: &Project, b: &Project) -> Ordering {
+        return self.get_access_time_for_project(b).cmp(&self.get_access_time_for_project(a));
     }
 
     fn eject_oldest_to_size(&mut self, capacity: usize) {
@@ -71,22 +74,8 @@ impl AccessCache {
         self.cache = self.cache
             .clone()
             .into_iter()
-            .sorted_by_key(|(k,v)| *v)
+            .sorted_by_key(|(_k,v)| *v)
             .take(capacity)
             .collect();
-    }
-
-    fn eject_oldest(&mut self) {
-        let Some(key) = self.get_oldest() else {
-            return;
-        };
-        self.cache.remove(&key);
-    }
-
-    fn get_oldest(&self) -> Option<PathBuf> {
-        let Some(key) = self.cache.iter().min_by_key(|(k, v)| **v) else {
-            return None
-        };
-        return Some(key.0.to_path_buf());
     }
 }

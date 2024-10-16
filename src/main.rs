@@ -87,7 +87,7 @@ fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::load();
-    let access_cache = match config.sort_mode {
+    let mut access_cache = match config.sort_mode {
         SortMode::Alphabetical => AccessCache::load_blank(None, 10),
         SortMode::Recent => AccessCache::load_from_file(config.cache_path, 50)?,
     };
@@ -102,6 +102,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         projects = projects.into_iter()
             .filter(|proj| *proj.path != current_dir().expect("couldnt get current path"))
             .collect();
+    }
+
+    match config.sort_mode {
+        SortMode::Alphabetical => (),
+        SortMode::Recent => projects.sort_by(|a, b| access_cache.cmp_projects_by_access_cache_time(a, b)),
     }
 
     let skim_opts = SkimOptionsBuilder::default()
@@ -159,6 +164,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .output()
             .expect("could not execute command");
     };
+
+    access_cache.register_access(&selected_proj);
 
     return Ok(());
 }
