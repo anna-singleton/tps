@@ -75,7 +75,59 @@ impl AccessCache {
             .clone()
             .into_iter()
             .sorted_by_key(|(_k,v)| *v)
+            .rev()
             .take(capacity)
             .collect();
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn register_access_doesnt_eject_other_cache_lines_when_nonfull() {
+        let mut access_cache = AccessCache::load_blank(None, 10);
+        access_cache.cache.insert("/my/path/1".into(), 0);
+
+        let project = Project::new("/my/path/2".into(), &vec![]);
+        access_cache.register_access(&project);
+
+        assert_eq!(2, access_cache.cache.len());
+    }
+
+    #[test]
+    fn register_access_updates_existing_cache_line() {
+        let mut access_cache = AccessCache::load_blank(None, 10);
+        let target_path: PathBuf = "/my/path/2".into();
+        access_cache.cache.insert("/my/path/1".into(), 0);
+        access_cache.cache.insert(target_path.clone(), 0);
+        access_cache.cache.insert("/my/path/3".into(), 0);
+
+        let project = Project::new("/my/path/2".into(), &vec![]);
+        access_cache.register_access(&project);
+
+        assert_eq!(3, access_cache.cache.len());
+        let updated_cache_line = access_cache.cache.get(&target_path);
+        assert!(updated_cache_line.is_some());
+        assert_ne!(0, *updated_cache_line.unwrap())
+    }
+
+    #[test]
+    fn register_access_ejects_oldest_cache_line_over_capacity() {
+        let mut access_cache = AccessCache::load_blank(None, 10);
+        let target_path: PathBuf = "/my/path/0".into();
+        let count:usize = 10;
+        for i in 0..count {
+            access_cache.cache.insert(format!("/my/path/{}", i).into(), i as i64);
+        }
+
+        assert_eq!(count, access_cache.cache.len());
+
+        let project = Project::new("/a/different/path".into(), &vec![]);
+        access_cache.register_access(&project);
+
+        assert_eq!(count, access_cache.cache.len());
+        let updated_cache_line = access_cache.cache.get(&target_path);
+        assert!(updated_cache_line.is_none());
     }
 }
