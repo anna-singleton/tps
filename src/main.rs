@@ -1,6 +1,8 @@
 mod config;
+mod access_cache;
 
-use config::Config;
+use access_cache::AccessCache;
+use config::{Config, SortMode};
 use std::{env::current_dir, path::PathBuf};
 use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, NewSession};
 use skim::prelude::*;
@@ -9,9 +11,9 @@ use regex::{Regex, RegexBuilder};
 #[derive(Debug, Clone)]
 struct Session {
     name: String,
-    window_count: u32,
-    date_created: String,
-    attached: bool,
+    _window_count: u32,
+    _date_created: String,
+    _attached: bool,
 }
 
 #[derive(Debug)]
@@ -23,7 +25,7 @@ struct Project {
 }
 
 impl Project {
-    fn new(path: PathBuf, sessions: &Vec<Session>) -> Project {
+    fn new(path: PathBuf, sessions: &[Session]) -> Project {
         let path_name = path.display().to_string();
         let path_name_sanitised = path_name.replace(".", "_");
         for (i, s) in sessions.iter().enumerate() {
@@ -62,7 +64,7 @@ impl SkimItem for Project {
     }
 }
 
-fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
+fn attach_from_outside_tmux(_path_name: &str, _session_name: &str, _exists: bool) {
     eprintln!("attaching from outside tmux is currently WIP, please open a tmux session and then call tps.");
     // if exists {
     //     let output = std::process::Command::new("tmux")
@@ -83,8 +85,12 @@ fn attach_from_outside_tmux(path_name: &str, session_name: &str, exists: bool) {
     // }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::load();
+    let mut access_cache = match config.sort_mode {
+        SortMode::Alphabetical => AccessCache::load_blank(None, 10),
+        SortMode::Recent => AccessCache::load_from_file(config.cache_path, 50)?,
+    };
     let sessions = get_tmux_session_info();
 
     let mut projects:Vec<_> = config.projects
@@ -93,9 +99,12 @@ fn main() {
         .collect();
 
     if config.skip_current {
-        projects = projects.into_iter()
-            .filter(|proj| *proj.path != current_dir().expect("couldnt get current path"))
-            .collect();
+        projects.retain(|proj| *proj.path != current_dir().expect("couldnt get current path"));
+    }
+
+    match config.sort_mode {
+        SortMode::Alphabetical => (),
+        SortMode::Recent => projects.sort_by(|a, b| access_cache.cmp_projects_by_access_cache_time(a, b)),
     }
 
     let skim_opts = SkimOptionsBuilder::default()
@@ -113,22 +122,16 @@ fn main() {
 
     let Some(selection) = Skim::run_with(&skim_opts, Some(rx)) else {
         eprintln!("Internal Skim Error");
-        return;
+        return Ok(());
     };
 
-    if selection.final_event == Event::EvActAbort {
-        return;
-    }
-
-
     if selection.final_event == Event::EvActAbort || selection.selected_items.is_empty() {
-        return;
+        return Ok(());
     }
 
     let selected_proj = selection.selected_items.iter()
         .map(|selected| (**selected).as_any().downcast_ref::<Project>().unwrap().to_owned())
         .collect::<Vec<_>>()[0];
-
 
     println!("Attempting to switch to project: {:?}", selected_proj);
 
@@ -158,8 +161,11 @@ fn main() {
             .arg(&selected_proj.session_name)
             .output()
             .expect("could not execute command");
-    }
+    };
 
+    access_cache.register_access(selected_proj);
+
+    return Ok(());
 }
 
 fn get_tmux_session_info() -> Vec<Session> {
@@ -182,9 +188,9 @@ fn get_tmux_session_info() -> Vec<Session> {
 
         sessions.push(Session {
             name,
-            window_count,
-            date_created,
-            attached,
+            _window_count: window_count,
+            _date_created: date_created,
+            _attached: attached,
         });
     }
     return sessions;

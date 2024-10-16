@@ -12,12 +12,39 @@ pub struct ConfigFileFormat {
     projects: Vec<String>,
 
     #[serde(default)]
-    skip_current: bool
+    skip_current: bool,
+
+    sort_mode: Option<String>,
+
+    cache_path: Option<String>,
+}
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub enum SortMode {
+    #[default]
+    Alphabetical,
+    Recent
+}
+
+impl From<&str> for SortMode {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "alphabetical" => Self::Alphabetical,
+            "recent" => Self::Recent,
+            _ => {
+                eprintln!("Could not parse SortMode, please check spelling. Accepted \
+                          Strings: 'alphabetical', 'recent'. Defaulting to alphabetical");
+                Self::Alphabetical
+            }
+        }
+    }
 }
 
 pub struct Config {
     pub projects: Vec<PathBuf>,
     pub skip_current: bool,
+    pub sort_mode: SortMode,
+    pub cache_path: PathBuf,
 }
 
 impl Config {
@@ -66,8 +93,7 @@ impl Config {
 
         let mut closed_dirs:HashSet<PathBuf> = HashSet::new();
 
-        while ! open_dirs.is_empty() {
-            let p = open_dirs.pop().unwrap();
+        while let Some(p) = open_dirs.pop() {
             closed_dirs.insert(p.clone());
             let subdirs = match p.read_dir() {
                 Ok(subdirs) => subdirs,
@@ -85,13 +111,11 @@ impl Config {
                     if let Ok(repo) = Repository::open(&path) {
                         if repo.is_bare() {
                             if let Ok(worktrees) = repo.worktrees() {
-                                for w in worktrees.iter() {
-                                    if let Some(w) = w {
-                                        let mut pathb = PathBuf::new();
-                                        pathb.push(&path);
-                                        pathb.push(w);
-                                        projects.push(pathb);
-                                    }
+                                for w in worktrees.iter().flatten() {
+                                    let mut pathb = PathBuf::new();
+                                    pathb.push(&path);
+                                    pathb.push(w);
+                                    projects.push(pathb);
                                 }
                             }
                             continue;
@@ -104,9 +128,25 @@ impl Config {
         }
         projects.sort();
 
+        let path: PathBuf = if let Some(raw_path) = conf.cache_path {
+            raw_path.into()
+        } else {
+            let cache_dir = base_dirs.cache_dir();
+            cache_dir.join("tps/access_cache")
+
+        };
+
+        let sort_mode = if let Some(mode_str) = conf.sort_mode {
+            mode_str.as_str().into()
+        } else {
+            SortMode::default()
+        };
+
         return Config {
             projects,
             skip_current: conf.skip_current,
+            sort_mode,
+            cache_path: path
         };
     }
 }
