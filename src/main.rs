@@ -25,7 +25,7 @@ struct Project {
 }
 
 impl Project {
-    fn new(path: PathBuf, sessions: &Vec<Session>) -> Project {
+    fn new(path: PathBuf, sessions: &[Session]) -> Project {
         let path_name = path.display().to_string();
         let path_name_sanitised = path_name.replace(".", "_");
         for (i, s) in sessions.iter().enumerate() {
@@ -99,9 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     if config.skip_current {
-        projects = projects.into_iter()
-            .filter(|proj| *proj.path != current_dir().expect("couldnt get current path"))
-            .collect();
+        projects.retain(|proj| *proj.path != current_dir().expect("couldnt get current path"));
     }
 
     match config.sort_mode {
@@ -165,7 +163,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("could not execute command");
     };
 
-    access_cache.register_access(&selected_proj);
+    access_cache.register_access(selected_proj);
 
     return Ok(());
 }

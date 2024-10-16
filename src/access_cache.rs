@@ -23,8 +23,8 @@ impl Drop for AccessCache {
             // otherwise we have nowhere to write it so dont.
             let b = toml::to_string_pretty(&self.cache).expect("[E001]: could not serialize access cache.
                 please report this error.");
-            if !fs::exists(&path.parent().expect("[E003] Error whilst trying to create parent cache directory")).unwrap_or(false) {
-                fs::create_dir_all(&path.parent().unwrap()).expect("[E002] Could not create cache directory");
+            if !fs::exists(path.parent().expect("[E003] Error whilst trying to create parent cache directory")).unwrap_or(false) {
+                fs::create_dir_all(path.parent().unwrap()).expect("[E002] Could not create cache directory");
             }
             if let Err(e) = fs::write(path, b) {
                 eprintln!("Could not write access cache. Recent accesses could not be updated.

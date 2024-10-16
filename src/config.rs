@@ -93,8 +93,7 @@ impl Config {
 
         let mut closed_dirs:HashSet<PathBuf> = HashSet::new();
 
-        while ! open_dirs.is_empty() {
-            let p = open_dirs.pop().unwrap();
+        while let Some(p) = open_dirs.pop() {
             closed_dirs.insert(p.clone());
             let subdirs = match p.read_dir() {
                 Ok(subdirs) => subdirs,
@@ -112,13 +111,11 @@ impl Config {
                     if let Ok(repo) = Repository::open(&path) {
                         if repo.is_bare() {
                             if let Ok(worktrees) = repo.worktrees() {
-                                for w in worktrees.iter() {
-                                    if let Some(w) = w {
-                                        let mut pathb = PathBuf::new();
-                                        pathb.push(&path);
-                                        pathb.push(w);
-                                        projects.push(pathb);
-                                    }
+                                for w in worktrees.iter().flatten() {
+                                    let mut pathb = PathBuf::new();
+                                    pathb.push(&path);
+                                    pathb.push(w);
+                                    projects.push(pathb);
                                 }
                             }
                             continue;
@@ -132,12 +129,7 @@ impl Config {
         projects.sort();
 
         let path: PathBuf = if let Some(raw_path) = conf.cache_path {
-            if let Ok(pb) = raw_path.try_into() {
-                pb
-            } else {
-                let cache_dir = base_dirs.cache_dir();
-                cache_dir.join("tps/access_cache")
-            }
+            raw_path.into()
         } else {
             let cache_dir = base_dirs.cache_dir();
             cache_dir.join("tps/access_cache")
