@@ -3,6 +3,9 @@ name = "tps"
 version = "0.1.0"
 edition = "2021"
 
+[lints.clippy]
+needless_return = "allow"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
