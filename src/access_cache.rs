@@ -81,6 +81,7 @@ impl AccessCache {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
