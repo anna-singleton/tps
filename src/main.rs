@@ -3,7 +3,8 @@ mod access_cache;
 
 use access_cache::AccessCache;
 use config::{Config, SortMode};
-use std::{env::current_dir, path::PathBuf};
+use itertools::Itertools;
+use std::{env::current_dir, fs, path::PathBuf};
 use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, NewSession};
 use skim::prelude::*;
 use regex::{Regex, RegexBuilder};
@@ -54,13 +55,17 @@ impl SkimItem for Project {
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
-        let s = match &self.session {
-            Some(session) => format!("Test preview for {}, which has session name {}",
-                        self.path_name, session.name),
-            None => format!("Test preview for {}, which has no existing session",
-                        self.path_name),
-        };
-        return ItemPreview::Text(s.to_owned());
+        let s = fs::read_dir(&self.path)
+            .unwrap()
+            .flat_map(|x| x)
+            .map(|x| format!("{}", x
+                    .path()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()))
+            .join("\n");
+        return ItemPreview::Text(s);
     }
 }
 
@@ -109,6 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let skim_opts = SkimOptionsBuilder::default()
         .multi(false)
+        .preview(Some(""))
         .build()
         .unwrap();
 
