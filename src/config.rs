@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::PathBuf};
+use std::{collections::HashSet, env::current_dir, fs::exists, io::stdin, path::PathBuf};
 
 use directories::BaseDirs;
 use git2::Repository;
@@ -48,7 +48,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Self {
+    pub fn load() -> Option<Self> {
         let base_dirs = BaseDirs::new().unwrap();
         let conf_dir = BaseDirs::config_dir(&base_dirs);
         let conf_file_path = conf_dir.join("tps/config.toml");
@@ -95,6 +95,9 @@ impl Config {
 
         while let Some(p) = open_dirs.pop() {
             closed_dirs.insert(p.clone());
+            if ! exists(&p).unwrap_or(false) {
+                continue;
+            }
             let subdirs = match p.read_dir() {
                 Ok(subdirs) => subdirs,
                 Err(e) => panic!("Could not read directory {} with error {}", p.display(), e),
@@ -126,6 +129,19 @@ impl Config {
                 }
             }
         }
+        let skip_current = conf.skip_current;
+
+        if skip_current {
+            projects.retain(|path| *path != current_dir().expect("couldnt get current path"));
+        }
+
+        if projects.is_empty() {
+            eprintln!("No projects found. Press ENTER to exit.");
+            let mut _s = String::new();
+            stdin().read_line(&mut _s).expect("couldnt read from stdin.");
+            return None;
+        }
+
         projects.sort();
 
         let path: PathBuf = if let Some(raw_path) = conf.cache_path {
@@ -142,11 +158,11 @@ impl Config {
             SortMode::default()
         };
 
-        return Config {
+        return Some(Config {
             projects,
-            skip_current: conf.skip_current,
+            skip_current,
             sort_mode,
             cache_path: path
-        };
+        });
     }
 }

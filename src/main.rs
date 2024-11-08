@@ -4,7 +4,7 @@ mod access_cache;
 use access_cache::AccessCache;
 use config::{Config, SortMode};
 use itertools::Itertools;
-use std::{env::current_dir, fs, path::PathBuf};
+use std::{env::current_dir, fs, path::PathBuf, process::exit};
 use tmux_interface::{tmux::Tmux, list_sessions::ListSessions, NewSession};
 use skim::prelude::*;
 use regex::{Regex, RegexBuilder};
@@ -91,7 +91,9 @@ fn attach_from_outside_tmux(_path_name: &str, _session_name: &str, _exists: bool
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = Config::load();
+    let Some(config) = Config::load() else {
+        exit(1);
+    };
     let mut access_cache = match config.sort_mode {
         SortMode::Alphabetical => AccessCache::load_blank(None, 10),
         SortMode::Recent => AccessCache::load_from_file(config.cache_path, 50)?,
