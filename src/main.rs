@@ -105,10 +105,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|path| Project::new(path, &sessions))
         .collect();
 
-    if config.skip_current {
-        projects.retain(|proj| *proj.path != current_dir().expect("couldnt get current path"));
-    }
-
     match config.sort_mode {
         SortMode::Alphabetical => (),
         SortMode::Recent => projects.sort_by(|a, b| access_cache.cmp_projects_by_access_cache_time(a, b)),
