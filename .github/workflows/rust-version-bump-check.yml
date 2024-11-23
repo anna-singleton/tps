@@ -9,6 +9,8 @@ on:
 jobs:
   check_versions:
     runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Install cargo-binstall
