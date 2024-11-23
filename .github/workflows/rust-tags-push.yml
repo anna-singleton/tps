@@ -29,7 +29,7 @@ jobs:
 
     - name: "get version number for tag."
       run: |
-        echo "NEW_TAG=$(tq -f feat-branch/Cargo.toml 'package.version')" | tee -a "$GITHUB_ENV"
+        echo "NEW_TAG=$(tq -f Cargo.toml 'package.version')" | tee -a "$GITHUB_ENV"
 
     - name: Push Git Tag
       run: |
