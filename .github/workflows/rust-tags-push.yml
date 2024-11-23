@@ -31,9 +31,13 @@ jobs:
       run: |
         echo "NEW_TAG=$(tq -f Cargo.toml 'package.version')" | tee -a "$GITHUB_ENV"
 
-    - name: Push Git Tag
-      run: |
-        git config user.name "GitHub Actions"
-        git config user.email "github-actions@users.noreply.github.com"
-        git tag $NEW_TAG
-        git push origin $NEW_TAG
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+        tag_name: ${{ env.NEW_TAG }}
+        release_name: ${{ env.NEW_TAG }}
+        draft: false
+        prerelease: false
