@@ -43,6 +43,14 @@ jobs:
           echo "# Version Change" >> $GITHUB_STEP_SUMMARY
           echo "When Merged, this will update versions:" >> $GITHUB_STEP_SUMMARY
           echo "\`$MAIN_BRANCH_VER\` -> \`$FEAT_BRANCH_VER\`" >> $GITHUB_STEP_SUMMARY
+      - name: "add PR comment"
+        uses: mshick/add-pr-comment@v2
+        with:
+          message:
+            >
+              # Version Change
+              When Merged, this will update versions:
+              `$MAIN_BRANCH_VER` -> `$FEAT_BRANCH_VER`
       - name: "check version is being bumped"
         run: |
           # solution from here https://stackoverflow.com/a/4024263
