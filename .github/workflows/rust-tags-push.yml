@@ -1,0 +1,39 @@
+name: Push Tags on Merge to Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate-and-push-tags:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+          fetch-depth: '0'
+
+    - name: "checkout branch"
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          Cargo.toml
+        sparse-checkout-cone-mode: false
+
+    - name: Install cargo-binstall
+      run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+    - name: Install tq
+      run: cargo binstall -y tomlq
+
+    - name: "get version number for tag."
+      run: |
+        echo "NEW_TAG=$(tq -f feat-branch/Cargo.toml 'package.version')" | tee -a "$GITHUB_ENV"
+
+    - name: Push Git Tag
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "github-actions@users.noreply.github.com"
+        git tag $NEW_TAG
+        git push origin $NEW_TAG

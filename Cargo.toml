@@ -1,7 +1,9 @@
 [package]
 name = "tps"
-version = "1.2.2"
+version = "1.2.3"
 edition = "2021"
+description = "Tmux Project Sessioniser - a workflow tool"
+license = "MIT"
 
 [lints.clippy]
 needless_return = "allow"
