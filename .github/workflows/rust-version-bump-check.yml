@@ -43,17 +43,14 @@ jobs:
           echo "MAIN_BRANCH_VER=$(tq -f main-branch/Cargo.toml 'package.version')" | tee -a "$GITHUB_ENV"
       - name: "report version change"
         run: |
-          echo "# Version Change" >> $GITHUB_STEP_SUMMARY
-          echo "When Merged, this will update versions:" >> $GITHUB_STEP_SUMMARY
-          echo "\`$MAIN_BRANCH_VER\` -> \`$FEAT_BRANCH_VER\`" >> $GITHUB_STEP_SUMMARY
+          echo "# Version Change" >> version-change.md
+          echo "When Merged, this will update versions:" >> version-change.md
+          echo "\`$MAIN_BRANCH_VER\` -> \`$FEAT_BRANCH_VER\`" >> version-change.md
+          cat version-change.md > $GITHUB_STEP_SUMMARY
       - name: "add PR comment"
         uses: mshick/add-pr-comment@v2
         with:
-          message:
-            >
-              # Version Change
-              When Merged, this will update versions:
-              `$MAIN_BRANCH_VER` -> `$FEAT_BRANCH_VER`
+          message-path: "version-change.md"
       - name: "check version is being bumped"
         run: |
           # solution from here https://stackoverflow.com/a/4024263
