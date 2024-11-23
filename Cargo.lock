@@ -1023,7 +1023,7 @@ dependencies = [
 
 [[package]]
 name = "tps"
-version = "1.2.8"
+version = "1.2.9"
 dependencies = [
  "chrono",
  "directories",
