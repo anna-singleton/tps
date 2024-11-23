@@ -1,10 +1,7 @@
 name: Ensure Version Bumped
 
 on:
-  push:
-    branches:
-      - 'feat/*'
-
+  pull_request
 
 jobs:
   check_versions:
