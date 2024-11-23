@@ -24,6 +24,14 @@ jobs:
       run: |
         echo "NEW_TAG=$(tq -f Cargo.toml 'package.version')" | tee -a "$GITHUB_ENV"
 
+    - name: Build
+      run: cargo build --release --verbose
+    - name: Test
+      run: cargo test --release --verbose
+    - name: Package Binary
+      run: |
+        mv target/release/tps . && tar czf tps-linux.tar.gz tps
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -34,13 +42,7 @@ jobs:
         release_name: ${{ env.NEW_TAG }}
         draft: false
         prerelease: false
-    - name: Build
-      run: cargo build --release --verbose
-    - name: Test
-      run: cargo test --release --verbose
-    - name: Package Binary
-      run: |
-        mv target/release/tps . && tar czf tps-linux.tar.gz tps
+
     - name: Upload Binary
       id: upload-release-asset
       uses: actions/upload-release-asset@v1
@@ -50,6 +52,8 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
         asset_path: ./tps-linux.tar.gz
         asset_name: tps-linux.tar.gz
+        asset_content_type: application/gzip
+
     - name: "publish to crates.io"
       run: cargo publish --allow-dirty --token ${{ secrets.CRATES_TOKEN }}
       env:
